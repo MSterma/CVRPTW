@@ -3,4 +3,8 @@ project(CVRPTW)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(CVRPTW main.cpp)
+add_executable(CVRPTW main.cpp
+        Client.cpp
+        Client.h
+        Vehicle.cpp
+        Vehicle.h)
