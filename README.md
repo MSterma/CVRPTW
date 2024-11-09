@@ -3,6 +3,6 @@ TODO:
     Vehicle struct: 
       fields: x,y capacity, maxCapacity
     Client class: 
-      fields: x,y,readyTimem, dueDate, serviceTIme  
+      fields: x,y,readyTime, dueDate, serviceTime  
       Methods: getDistance
     
