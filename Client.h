@@ -21,7 +21,7 @@ private:
     int dueDate;
     int serviceTime;
 public:
-    Client(int id,int x, int y,int demand,int dueDate, int serviceTime, int readyTime) {
+    Client(int id,int x, int y,int demand, int serviceTime, int dueDate,int readyTime) {
         this->id = id;
         this->x = x;
         this->y = y;
@@ -47,6 +47,7 @@ public:
     double getDistance(int xv,int yv) {
         return sqrt(pow(xv - this->x, 2) + pow(yv - this->y, 2));
     }
+    bool operator<( const Client& c2) const { return dueDate < c2.dueDate; }
 
     std::string toString() {
         return std::to_string(id)+", "+std::to_string(x) + ", " + std::to_string(y)+", "+std::to_string(demand)+", "+std::to_string(dueDate)+", "+std::to_string(serviceTime)+", "+std::to_string(readyTime);
