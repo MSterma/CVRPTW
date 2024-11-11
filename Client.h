@@ -20,8 +20,9 @@ private:
     int readyTime;
     int dueDate;
     int serviceTime;
+    bool served;
 public:
-    Client(int id,int x, int y,int demand, int serviceTime, int dueDate,int readyTime) {
+    Client(int id,int x, int y,int demand, int readyTime,int dueDate, int serviceTime) {
         this->id = id;
         this->x = x;
         this->y = y;
@@ -29,7 +30,9 @@ public:
         this->dueDate = dueDate;
         this->serviceTime = serviceTime;
         this->readyTime = readyTime;
+        this->served = false;
     }
+    int getId() {return id;}
     int getX(){return x;};
     int getY(){return y;};
     int getDemand() {
@@ -38,6 +41,13 @@ public:
     int getReadyTime() {
         return readyTime;
     };
+    bool getServed() {
+        return served;
+    }
+    void setServed(bool served) {
+        this->served = served;
+    }
+
     int getDueDate() {
         return dueDate;
     };
@@ -50,7 +60,7 @@ public:
     bool operator<( const Client& c2) const { return dueDate < c2.dueDate; }
 
     std::string toString() {
-        return std::to_string(id)+", "+std::to_string(x) + ", " + std::to_string(y)+", "+std::to_string(demand)+", "+std::to_string(dueDate)+", "+std::to_string(serviceTime)+", "+std::to_string(readyTime);
+        return std::to_string(id)+", "+std::to_string(x) + ", " + std::to_string(y)+", "+std::to_string(demand)+", "+std::to_string(readyTime)+", "+std::to_string(dueDate)+", "+std::to_string(serviceTime);
 
     }
 };
