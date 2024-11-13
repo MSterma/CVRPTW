@@ -4,6 +4,8 @@
 
 #ifndef VEHICLE_H
 #define VEHICLE_H
+#include <iostream>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -30,13 +32,10 @@ class Vehicle {
     int getY() {
         return y;
     }
-    int  setCapacity(int capacity) {
-        this->capacity = capacity;
-    }
-    int setX(int x) {
+    void setX(int x) {
         this->x = x;
     }
-    int setY(int y) {
+    void setY(int y) {
         this->y = y;
     }
     void add(int id) {
@@ -60,7 +59,13 @@ class Vehicle {
         return route;
     }
     std::string toString() {
-        return std::to_string(x) + "," + std::to_string(y)+ "," + std::to_string(capacity)+", "+std::to_string(maxCapacity);
+        std::string r="";
+        for (auto r1: route) {
+            r += std::to_string(r1);
+            r+=" ";
+        }
+        r+="\n";
+        return r;
     }
 
 };
