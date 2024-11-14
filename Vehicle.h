@@ -19,9 +19,9 @@ class Vehicle {
     std::vector<int> route;
 
     public:
-    Vehicle(int maxCapacity) {
-        this->x = 0;
-        this->y = 0;
+    Vehicle(const int x, const int y,int maxCapacity) {
+        this->x = x;
+        this->y = y;
         this->capacity = maxCapacity;
         this->maxCapacity = maxCapacity;
         this->time = 0;

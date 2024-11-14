@@ -1,61 +1,59 @@
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 #include <fstream>
 #include "Client.h"
 #include "Vehicle.h"
 #define  RCLSIZE 3
-#define TIME 60
-double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,int depoDue) {
+#define TIME 300
+double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,Client depot) {
     double solLen=0;
     bool canLoad;
     std::vector<int> rcl;
-    std::vector<Client> unserved=clients;
+    std::vector<Client> unserved=std::move(clients);
+    int xd=depot.getX();
+    int yd=depot.getY();
+    int depoDue=depot.getDueDate();
     int k=0;
-    while(unserved.size()>0) {
-        vehicles.push_back(maxCap);
-        canLoad=true;
-        while(canLoad) {
+    while(!unserved.empty()) {
+        vehicles.emplace_back(Vehicle(xd,yd,maxCap));
+        while(1) {
             int x=vehicles.at(k).getX();
             int y=vehicles.at(k).getY();
-            int t=vehicles.at(k).getTime();
+            double t=vehicles.at(k).getTime();
             std::sort(unserved.begin(),unserved.end(),[x,y,t](Client& lhs, Client& rhs) {
-                double l= lhs.getDistance(x,y)+t>lhs.getReadyTime()?lhs.getDistance(x,y):lhs.getReadyTime()-(double)t;
-               double r=rhs.getDistance(x,y)+t>rhs.getReadyTime()?rhs.getDistance(x,y):rhs.getReadyTime()-(double)t;
+                double l= lhs.getDistance(x,y)+t>lhs.getReadyTime()?lhs.getDistance(x,y):lhs.getReadyTime()-static_cast<double>(t);
+               double r=rhs.getDistance(x,y)+t>rhs.getReadyTime()?rhs.getDistance(x,y):rhs.getReadyTime()-static_cast<double>(t);
                 //double l= lhs.getDistance(x,y);
                // double r= rhs.getDistance(x,y);
                 return l<r;
             });
             int i=0;
-            canLoad=false;
             int cap=vehicles.at(k).getCapacity();
             while (rcl.size()<RCLSIZE && i<unserved.size()) {
-                double dis=unserved.at(i).getDistance(x,y)+t>=unserved.at(i).getReadyTime()?unserved.at(i).getDistance(x,y):(double)unserved.at(i).getReadyTime()-t;
-                double ndsist=unserved.at(i).getDistance(0,0)+vehicles.at(k).getTime()+unserved.at(i).getServiceTime()+dis;
-                if (cap>=unserved.at(i).getDemand() && unserved.at(i).getDistance(x,y)+t<unserved.at(i).getDueDate() && ndsist<=(double)depoDue) {
+                double dis=unserved.at(i).getDistance(x,y)+t>=unserved.at(i).getReadyTime()?unserved.at(i).getDistance(x,y):static_cast<double>(unserved.at(i).getReadyTime())-t;
+                double ndsist=unserved.at(i).getDistance(xd,yd)+vehicles.at(k).getTime()+unserved.at(i).getServiceTime()+dis;
+                if (cap>=unserved.at(i).getDemand() && unserved.at(i).getDistance(x,y)+t<unserved.at(i).getDueDate() && ndsist<=static_cast<double>(depoDue)) {
                     rcl.push_back(i);
-                    canLoad=true;
                 }
                 i++;
             }
             if(rcl.size()>0) {
                 int randNum = rand()%(rcl.size());
                 Client cl=unserved.at(rcl.at(randNum));
-                double d=cl.getDistance(x,y)+t>(double)cl.getReadyTime()?cl.getDistance(x,y):(double)cl.getReadyTime()-(double)vehicles.at(k).getTime();
+                double d=cl.getDistance(vehicles.at(k).getX(),vehicles.at(k).getY())+t>=static_cast<double>(cl.getReadyTime())?cl.getDistance(x,y):(static_cast<double>(cl.getReadyTime())-vehicles.at(k).getTime());
                 vehicles.at(k).add(cl.getId());
                 vehicles.at(k).setX(cl.getX());
                 vehicles.at(k).setY(cl.getY());
                 vehicles.at(k).load(cl.getDemand());
-                vehicles.at(k).incTime(d+(double)cl.getServiceTime());
+                vehicles.at(k).incTime(d+static_cast<double>(cl.getServiceTime()));
                 unserved.erase(unserved.begin()+rcl.at(randNum));
                 rcl.clear();
-            }else if (vehicles.at(k).getX()==0 && vehicles.at(k).getY()==0) {
+            }else if (vehicles.at(k).getX()==xd && vehicles.at(k).getY()==yd) {
                 return -1;
             }else{
-
-                vehicles.at(k).incTime(sqrt(pow( vehicles.at(k).getX(), 2) + pow(vehicles.at(k).getY(), 2)));
-                vehicles.at(k).setX(0);
-                vehicles.at(k).setY(0);
+                vehicles.at(k).incTime(depot.getDistance(vehicles.at(k).getX(),vehicles.at(k).getY()));
                 break;
             }
         }
@@ -66,10 +64,17 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
     }
     return solLen;
 }
-int main()
+int main(int argc, char *argv[])
 {
+    if(argc!=3) {
+        argv[1]=(char*)"input/rc21010.txt";
+        argv[2]=(char*)"solution.txt";
+
+
+    }
+
     double max=11111111;
-    std::string testFile="input/m2kvrptw-0.txt";
+    std::string testFile=argv[1];
     time_t beg=time(NULL);
     std::ifstream file (testFile);
         std::vector<Vehicle> vehicles;
@@ -91,19 +96,16 @@ int main()
             getline(file,buf);
         }
         int vals[7];
-        int depoDue=0;
+        file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6];
+         Client depot= Client(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
         while (file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6]) {
             client_num++;
-            if(vals[0]==0) {
-                depoDue=vals[5];
-                continue;
-            }
-            clients.emplace_back(vals[0]+1,vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
+            clients.emplace_back(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
         }// end of parsing
     std::string solution="";
     file.close();
     while(time(NULL)-beg<TIME) {
-            double loc=grasp(vehicles,clients,maxCap,depoDue);
+            double loc=grasp(vehicles,clients,maxCap,depot);
             if(loc<max) {
                 solution="";
                 max=loc;
@@ -116,7 +118,7 @@ int main()
             }
         vehicles.clear();
     }
-    std::ofstream Ofile ("solution.txt");
+    std::ofstream Ofile (argv[2]);
     Ofile << solution;
     Ofile.close();
     return 0;
