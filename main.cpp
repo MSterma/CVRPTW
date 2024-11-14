@@ -3,13 +3,14 @@
 #include <utility>
 #include <vector>
 #include <fstream>
+#include <algorithm>
 #include "Client.h"
 #include "Vehicle.h"
-#define  RCLSIZE 3
-#define TIME 300
+#define  RCLSIZE 1
+#define TIME 1
 double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,Client depot) {
     double solLen=0;
-    bool canLoad;
+    bool progress_made = false;
     std::vector<int> rcl;
     std::vector<Client> unserved=std::move(clients);
     int xd=depot.getX();
@@ -50,7 +51,8 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
                 vehicles.at(k).incTime(d+static_cast<double>(cl.getServiceTime()));
                 unserved.erase(unserved.begin()+rcl.at(randNum));
                 rcl.clear();
-            }else if (vehicles.at(k).getX()==xd && vehicles.at(k).getY()==yd) {
+                progress_made = true;
+            }else if (vehicles.at(k).getX()==xd && vehicles.at(k).getY()==yd && !progress_made) {
                 return -1;
             }else{
                 vehicles.at(k).incTime(depot.getDistance(vehicles.at(k).getX(),vehicles.at(k).getY()));
@@ -67,7 +69,7 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
 int main(int argc, char *argv[])
 {
     if(argc!=3) {
-        argv[1]=(char*)"input/rc21010.txt";
+        argv[1]=(char*)"input/RC203.txt";
         argv[2]=(char*)"solution.txt";
 
 
@@ -106,6 +108,10 @@ int main(int argc, char *argv[])
     file.close();
     while(time(NULL)-beg<TIME) {
             double loc=grasp(vehicles,clients,maxCap,depot);
+            if(loc<0){
+                solution="-1";
+                break;
+            }
             if(loc<max) {
                 solution="";
                 max=loc;
