@@ -8,7 +8,8 @@
 #include <ostream>
 #include <string>
 #include <vector>
-
+/*
+ *1048 4576016.774624*/
 
 class Vehicle {
     int x;

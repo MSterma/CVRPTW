@@ -7,10 +7,9 @@
 #include "Client.h"
 #include "Vehicle.h"
 #define  RCLSIZE 1
-#define TIME 1
+#define TIME 300
 double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,Client depot) {
     double solLen=0;
-    bool progress_made = false;
     std::vector<int> rcl;
     std::vector<Client> unserved=std::move(clients);
     int xd=depot.getX();
@@ -23,19 +22,20 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
             int x=vehicles.at(k).getX();
             int y=vehicles.at(k).getY();
             double t=vehicles.at(k).getTime();
+            Vehicle& vehicle=vehicles.at(k);
+            int cap=vehicle.getCapacity();
+
             std::sort(unserved.begin(),unserved.end(),[x,y,t](Client& lhs, Client& rhs) {
                 double l= lhs.getDistance(x,y)+t>lhs.getReadyTime()?lhs.getDistance(x,y):lhs.getReadyTime()-static_cast<double>(t);
                double r=rhs.getDistance(x,y)+t>rhs.getReadyTime()?rhs.getDistance(x,y):rhs.getReadyTime()-static_cast<double>(t);
-                //double l= lhs.getDistance(x,y);
-               // double r= rhs.getDistance(x,y);
                 return l<r;
             });
             int i=0;
-            int cap=vehicles.at(k).getCapacity();
+
             while (rcl.size()<RCLSIZE && i<unserved.size()) {
                 double dis=unserved.at(i).getDistance(x,y)+t>=unserved.at(i).getReadyTime()?unserved.at(i).getDistance(x,y):static_cast<double>(unserved.at(i).getReadyTime())-t;
                 double ndsist=unserved.at(i).getDistance(xd,yd)+vehicles.at(k).getTime()+unserved.at(i).getServiceTime()+dis;
-                if (cap>=unserved.at(i).getDemand() && unserved.at(i).getDistance(x,y)+t<unserved.at(i).getDueDate() && ndsist<=static_cast<double>(depoDue)) {
+                if (cap>=unserved.at(i).getDemand() && dis+t<unserved.at(i).getDueDate() && ndsist<=static_cast<double>(depoDue)) {
                     rcl.push_back(i);
                 }
                 i++;
@@ -43,19 +43,18 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
             if(rcl.size()>0) {
                 int randNum = rand()%(rcl.size());
                 Client cl=unserved.at(rcl.at(randNum));
-                double d=cl.getDistance(vehicles.at(k).getX(),vehicles.at(k).getY())+t>=static_cast<double>(cl.getReadyTime())?cl.getDistance(x,y):(static_cast<double>(cl.getReadyTime())-vehicles.at(k).getTime());
-                vehicles.at(k).add(cl.getId());
-                vehicles.at(k).setX(cl.getX());
-                vehicles.at(k).setY(cl.getY());
-                vehicles.at(k).load(cl.getDemand());
-                vehicles.at(k).incTime(d+static_cast<double>(cl.getServiceTime()));
+                double d=cl.getDistance(x,y)+t>=static_cast<double>(cl.getReadyTime())?cl.getDistance(x,y):(static_cast<double>(cl.getReadyTime())-t);
+               vehicle.add(cl.getId());
+                vehicle.setX(cl.getX());
+                vehicle.setY(cl.getY());
+                vehicle.load(cl.getDemand());
+                vehicle.incTime(d+static_cast<double>(cl.getServiceTime()));
                 unserved.erase(unserved.begin()+rcl.at(randNum));
                 rcl.clear();
-                progress_made = true;
-            }else if (vehicles.at(k).getX()==xd && vehicles.at(k).getY()==yd && !progress_made) {
+            }else if (x==xd && y==yd && vehicle.getRoute().empty()) {
                 return -1;
             }else{
-                vehicles.at(k).incTime(depot.getDistance(vehicles.at(k).getX(),vehicles.at(k).getY()));
+                vehicle.incTime(depot.getDistance(vehicles.at(k).getX(),vehicles.at(k).getY()));
                 break;
             }
         }
@@ -69,7 +68,7 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
 int main(int argc, char *argv[])
 {
     if(argc!=3) {
-        argv[1]=(char*)"input/RC203.txt";
+        argv[1]=(char*)"input/R106.txt";
         argv[2]=(char*)"solution.txt";
 
 
