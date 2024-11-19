@@ -3,7 +3,9 @@
 #include <utility>
 #include <vector>
 #include <fstream>
+#include <filesystem>
 #include <algorithm>
+#include <cstring>
 #include "Client.h"
 #include "Vehicle.h"
 #define  RCLSIZE 1
@@ -68,12 +70,35 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
 }
 int main(int argc, char *argv[])
 {
-    if(argc!=3) {
-        argv[1]=(char*)"input/RC203.txt";
-        argv[2]=(char*)"solution.txt";
+
+    std::string folder_path = "input/solomon_50";
+    int i = 1;
+    for (const auto& entry : std::filesystem::directory_iterator(folder_path)) {
+//        std::filesystem::directory_entry entry("/path/to/file.txt");
+
+        // Uzyskanie nazwy pliku jako std::string
+        std::string filename_str = "input/solomon_50/" + entry.path().filename().string();
+
+        // Alokacja pamięci na char* i skopiowanie zawartości
+        char* filename_cstr = new char[filename_str.length() + 1];
+        std::strcpy(filename_cstr, filename_str.c_str());
 
 
-    }
+        std::string filename = "sol(" + std::to_string(i) + ").txt";
+
+        // Allocate memory for char* and copy the contents
+        char* filename_cstr2 = new char[filename.length() + 1];
+        std::strcpy(filename_cstr2, filename.c_str());
+
+        argv[1]=filename_cstr;
+        argv[2]=filename_cstr2;
+        i++;
+//    if(argc!=3) {
+//        argv[1]=(char*)"input/m2kvrptw-0.txt";
+//        argv[2]=(char*)"solution.txt";
+//
+//
+//    }
 
     double max=11111111;
     std::string testFile=argv[1];
@@ -127,5 +152,6 @@ int main(int argc, char *argv[])
     std::ofstream Ofile (argv[2]);
     Ofile << solution;
     Ofile.close();
+    }
     return 0;
 }
