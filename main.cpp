@@ -7,7 +7,7 @@
 #include "Client.h"
 #include "Vehicle.h"
 #define  RCLSIZE 1
-#define TIME 300
+#define TIME 1
 double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,Client depot) {
     double solLen=0;
     std::vector<int> rcl;
@@ -35,7 +35,7 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
             while (rcl.size()<RCLSIZE && i<unserved.size()) {
                 double dis=unserved.at(i).getDistance(x,y)+t>=unserved.at(i).getReadyTime()?unserved.at(i).getDistance(x,y):static_cast<double>(unserved.at(i).getReadyTime())-t;
                 double ndsist=unserved.at(i).getDistance(xd,yd)+vehicles.at(k).getTime()+unserved.at(i).getServiceTime()+dis;
-                if (cap>=unserved.at(i).getDemand() && dis+t<unserved.at(i).getDueDate() && ndsist<=static_cast<double>(depoDue)) {
+                if (cap>=unserved.at(i).getDemand() && dis+t<=unserved.at(i).getDueDate() && ndsist<=static_cast<double>(depoDue)) {
                     rcl.push_back(i);
                 }
                 i++;
@@ -68,7 +68,7 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
 int main(int argc, char *argv[])
 {
     if(argc!=3) {
-        argv[1]=(char*)"input/R106.txt";
+        argv[1]=(char*)"input/m2kvrptw-3.txt";
         argv[2]=(char*)"solution.txt";
 
 
