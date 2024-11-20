@@ -6,10 +6,11 @@
 #include <algorithm>
 #include "Client.h"
 #include "Vehicle.h"
-#define  RCLSIZE 1
+#define  RCLSIZE 2
 #define TIME 1
 double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,Client depot) {
     double solLen=0;
+    srand(time(NULL));
     std::vector<int> rcl;
     std::vector<Client> unserved=std::move(clients);
     int xd=depot.getX();
@@ -68,15 +69,14 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
 int main(int argc, char *argv[])
 {
     if(argc!=3) {
-        argv[1]=(char*)"input/m2kvrptw-3.txt";
+        argv[1]=(char*)"input/rc21010.txt";
         argv[2]=(char*)"solution.txt";
 
 
     }
 
-    double max=11111111;
+
     std::string testFile=argv[1];
-    time_t beg=time(NULL);
     std::ifstream file (testFile);
         std::vector<Vehicle> vehicles;
         std::vector<Client> clients;
@@ -99,32 +99,36 @@ int main(int argc, char *argv[])
         int vals[7];
         file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6];
          Client depot= Client(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
+         std::ofstream Ofile (argv[2]);
         while (file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6]) {
             client_num++;
             clients.emplace_back(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
-        }// end of parsing
-    std::string solution="";
-    file.close();
-    while(time(NULL)-beg<TIME) {
-            double loc=grasp(vehicles,clients,maxCap,depot);
-            if(loc<0){
-                solution="-1";
-                break;
+            if(vals[0]%10!=0) {
+                continue;
             }
-            if(loc<max) {
-                solution="";
-                max=loc;
-                solution+=std::to_string(vehicles.size());
-                solution+=" "+std::to_string(loc);
-                solution+="\n";
-                for (auto veh: vehicles) {
-                    solution+=veh.toString();
+            std::cout << client_num << std::endl;
+            std::string solution="";
+            double max=11111111;
+            time_t beg=time(NULL);
+            while(time(NULL)-beg<TIME) {
+                double loc=grasp(vehicles,clients,maxCap,depot);
+                if(loc<0){
+                    solution="-1";
                 }
+                if(loc<max) {
+                    solution=std::to_string(client_num)+" ";
+                    max=loc;
+                    solution+=std::to_string(vehicles.size());
+                    solution+=" "+std::to_string(loc);
+                    solution+="\n";
+                }
+                vehicles.clear();
             }
-        vehicles.clear();
-    }
-    std::ofstream Ofile (argv[2]);
-    Ofile << solution;
+            Ofile << solution;
+
+        }// end of parsing
+    file.close();
     Ofile.close();
+
     return 0;
 }
