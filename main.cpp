@@ -7,7 +7,7 @@
 #include "Client.h"
 #include "Vehicle.h"
 #define  RCLSIZE 2
-#define TIME 1
+#define TIME 90
 double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,Client depot) {
     double solLen=0;
     srand(time(NULL));
@@ -99,7 +99,9 @@ int main(int argc, char *argv[])
         int vals[7];
         file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6];
          Client depot= Client(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
-         std::ofstream Ofile (argv[2]);
+         std::ofstream Ofile1 ("sol1.txt");
+        std::ofstream Ofile2 ("sol2.txt");
+        std::ofstream Ofile3 ("sol3.txt");
         while (file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6]) {
             client_num++;
             clients.emplace_back(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
@@ -107,7 +109,9 @@ int main(int argc, char *argv[])
                 continue;
             }
             std::cout << client_num << std::endl;
-            std::string solution="";
+            std::string solutions[3];
+            for(int i=0;i<3;i++){
+            std::string solution;
             double max=11111111;
             time_t beg=time(NULL);
             while(time(NULL)-beg<TIME) {
@@ -124,11 +128,22 @@ int main(int argc, char *argv[])
                 }
                 vehicles.clear();
             }
-            Ofile << solution;
+            if(i==0){
+                Ofile1 << solution;
 
+            }else  if(i==1){
+                Ofile2 << solution;
+
+            } else if(i==2){
+                    Ofile3 << solution;
+
+                }
+            }
         }// end of parsing
     file.close();
-    Ofile.close();
+    Ofile1.close();
+    Ofile2.close();
+    Ofile3.close();
 
     return 0;
 }
