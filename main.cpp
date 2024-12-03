@@ -157,6 +157,7 @@ int main(int argc, char *argv[])
     std::vector<std::vector<int>> population;
     while(z<10) {
         std::vector<int> sl;
+        double l=grasp(vehicles,clients,maxCap,depot);
         for(auto vehicle: vehicles) {
             for (int route: vehicle.getRoute()) {
                 sl.emplace_back(route);
