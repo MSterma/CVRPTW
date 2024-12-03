@@ -4,10 +4,12 @@
 #include <vector>
 #include <fstream>
 #include <algorithm>
+#include <map>
+
 #include "Client.h"
 #include "Vehicle.h"
 #define  RCLSIZE 2
-#define TIME 90
+#define TIME 1
 double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,Client depot) {
     double solLen=0;
     srand(time(NULL));
@@ -66,6 +68,51 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
     }
     return solLen;
 }
+double genetic(std::vector<std::vector<int>> &population,std::vector<Client> clients, int maxCap,Client depot) {
+    std::vector<Vehicle> vehicles;
+    srand(time(NULL));
+    std::vector<std::vector<int>> crossovers;
+    std::map<int,double> solVals;
+    int i=0;
+    for(auto v : population) {
+        int x=depot.getX();
+        int y=depot.getY();
+        int cap=0;
+        double maxt=0;
+        double t=0;
+        for(int vi: v) {
+            Client cl=clients.at(vi-1);
+
+            if(vi==-1) {
+                cl=depot;
+            }
+            double dist=cl.getDistance(x,y);
+            double d=dist+t>=cl.getReadyTime()?cl.getDistance(x,y):(static_cast<double>(cl.getReadyTime())-t);
+            if(cap+cl.getDemand()>maxCap || dist+t>cl.getDueDate() || d+depot.getDistance(x,y)>depot.getDueDate()) {
+                maxt+=t+depot.getDistance(x,y);
+                x=depot.getX();
+                y=depot.getY();
+                cap=0;
+
+                t=0;
+                dist=cl.getDistance(x,y);
+                d=dist>=cl.getReadyTime()?cl.getDistance(x,y):(static_cast<double>(cl.getReadyTime()));
+            }
+            cap+=cl.getDemand();
+            x=cl.getX();
+            y=cl.getY();
+            t+=d+cl.getServiceTime();
+        }
+        maxt+=t+depot.getDistance(x,y);
+        solVals.insert({i,maxt});
+        i++;
+    }
+    for (auto v: solVals) {
+        std::cout<<v.first<<" "<<v.second<<std::endl;
+    }
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     if(argc!=3) {
@@ -99,51 +146,29 @@ int main(int argc, char *argv[])
         int vals[7];
         file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6];
          Client depot= Client(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
-         std::ofstream Ofile1 ("sol1.txt");
-        std::ofstream Ofile2 ("sol2.txt");
-        std::ofstream Ofile3 ("sol3.txt");
+         std::ofstream Ofile (argv[2]);
         while (file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6]) {
             client_num++;
             clients.emplace_back(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
-            if(vals[0]%10!=0) {
-                continue;
-            }
-            std::cout << client_num << std::endl;
-            std::string solutions[3];
-            for(int i=0;i<3;i++){
-            std::string solution;
-            double max=11111111;
-            time_t beg=time(NULL);
-            while(time(NULL)-beg<TIME) {
-                double loc=grasp(vehicles,clients,maxCap,depot);
-                if(loc<0){
-                    solution="-1";
-                }
-                if(loc<max) {
-                    solution=std::to_string(client_num)+" ";
-                    max=loc;
-                    solution+=std::to_string(vehicles.size());
-                    solution+=" "+std::to_string(loc);
-                    solution+="\n";
-                }
-                vehicles.clear();
-            }
-            if(i==0){
-                Ofile1 << solution;
-
-            }else  if(i==1){
-                Ofile2 << solution;
-
-            } else if(i==2){
-                    Ofile3 << solution;
-
-                }
-            }
         }// end of parsing
+    double max=11111111;
+    int z=0;
+    int min=0;
+    std::vector<std::vector<int>> population;
+    while(z<10) {
+        std::vector<int> sl;
+        for(auto vehicle: vehicles) {
+            for (int route: vehicle.getRoute()) {
+                sl.emplace_back(route);
+            }
+        }
+        population.emplace_back(sl);
+        vehicles.clear();
+        z++;
+    }
+    genetic(population,clients,maxCap,depot);
     file.close();
-    Ofile1.close();
-    Ofile2.close();
-    Ofile3.close();
+    Ofile.close();
 
     return 0;
 }
