@@ -5,11 +5,12 @@
 #include <fstream>
 #include <algorithm>
 #include <map>
+#include <__charconv/chars_format.h>
 
 #include "Client.h"
 #include "Vehicle.h"
 #define  RCLSIZE 2
-#define TIME 1
+#define TIME 180
 double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,Client depot) {
     double solLen=0;
     srand(time(NULL));
@@ -68,48 +69,127 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
     }
     return solLen;
 }
+double checkSolution(std::vector<Client> clients, int maxCap, Client depot, std::vector<int> v) {
+    int x=depot.getX();
+    int y=depot.getY();
+    int cap=0;
+    double maxt=0;
+    double t=0;
+    int maszruty=0;
+    for(int vi: v) {
+        Client cl=clients.at(vi-1);
+        double dist=cl.getDistance(x,y);
+        double d=dist+t>=cl.getReadyTime()?cl.getDistance(x,y):(static_cast<double>(cl.getReadyTime())-t);
+        if(cap+cl.getDemand()>maxCap || dist+t>cl.getDueDate() || d+depot.getDistance(x,y)>depot.getDueDate()) {
+            maxt+=t+depot.getDistance(x,y);
+            maszruty++;
+            x=depot.getX();
+            y=depot.getY();
+            cap=0;
+
+            t=0;
+            dist=cl.getDistance(x,y);
+            d=dist>=cl.getReadyTime()?cl.getDistance(x,y):(static_cast<double>(cl.getReadyTime()));
+        }
+        cap+=cl.getDemand();
+        x=cl.getX();
+        y=cl.getY();
+        t+=d+cl.getServiceTime();
+    }
+    maxt+=t+depot.getDistance(x,y);
+    maszruty++;
+    return maxt*sqrt(maszruty);
+
+}
 double genetic(std::vector<std::vector<int>> &population,std::vector<Client> clients, int maxCap,Client depot) {
     std::vector<Vehicle> vehicles;
     srand(time(NULL));
     std::vector<std::vector<int>> crossovers;
-    std::map<int,double> solVals;
+    std::vector<std::pair<int,double>> solVals;
     int i=0;
     for(auto v : population) {
-        int x=depot.getX();
-        int y=depot.getY();
-        int cap=0;
-        double maxt=0;
-        double t=0;
-        for(int vi: v) {
-            Client cl=clients.at(vi-1);
-
-            if(vi==-1) {
-                cl=depot;
-            }
-            double dist=cl.getDistance(x,y);
-            double d=dist+t>=cl.getReadyTime()?cl.getDistance(x,y):(static_cast<double>(cl.getReadyTime())-t);
-            if(cap+cl.getDemand()>maxCap || dist+t>cl.getDueDate() || d+depot.getDistance(x,y)>depot.getDueDate()) {
-                maxt+=t+depot.getDistance(x,y);
-                x=depot.getX();
-                y=depot.getY();
-                cap=0;
-
-                t=0;
-                dist=cl.getDistance(x,y);
-                d=dist>=cl.getReadyTime()?cl.getDistance(x,y):(static_cast<double>(cl.getReadyTime()));
-            }
-            cap+=cl.getDemand();
-            x=cl.getX();
-            y=cl.getY();
-            t+=d+cl.getServiceTime();
-        }
-        maxt+=t+depot.getDistance(x,y);
-        solVals.insert({i,maxt});
+        solVals.push_back({i,checkSolution(clients,maxCap,depot,v)});
         i++;
     }
-    for (auto v: solVals) {
-        std::cout<<v.first<<" "<<v.second<<std::endl;
+    std::sort(solVals.begin(), solVals.end(),[](std::pair<int,double> a,std::pair<int,double> b ){ return a.second<b.second;});
+    /*for(auto v: solVals) {
+        std::cout<<v.first<<" "<<std::fixed<<std::setprecision(5)<<v.second<<std::endl;
+    }*/
+
+    for(int z=1; z<population.size()*0.5; z++) {
+        std::vector<int> first;
+        std::vector<int> second;
+        int j=rand()%population.at(0).size();
+        //std::cout<<j<<std::endl;
+        for(int k=0;k<j;k++) {
+                first.push_back(population.at(z-1).at(k));
+                second.push_back(population.at(z).at(k));
+        }
+        int circ=j;
+        while(first.size()<clients.size()) {
+            if(std::find(first.begin(), first.end(), population.at(z).at(circ)) != first.end()) {
+                if(circ==clients.size()-1) {
+                    circ=0;
+                }else {
+                    circ++;
+                }
+            }else {
+                first.push_back(population.at(z).at(circ));
+            }
+        }
+        circ=j;
+        while(second.size()<clients.size()) {
+            if(std::find(second.begin(), second.end(), population.at(z-1).at(circ)) != second.end()) {
+                if(circ==clients.size()-1) {
+                    circ=0;
+                }else {
+                    circ++;
+                }
+            }else {
+                second.push_back(population.at(z-1).at(circ));
+            }
+        }
+      if(rand()%1000==3) {
+          int  firstL=rand()%clients.size();
+          int  secondL=rand()%clients.size();
+          while (firstL==secondL) {
+              secondL=rand()%clients.size();
+          }
+          int buff=first.at(firstL);
+          first.at(firstL)= first.at(secondL);
+          first.at(secondL) = buff;
+      }
+        if(rand()%1000==3) {
+            int  firstL=rand()%clients.size();
+            int  secondL=rand()%clients.size();
+            while (firstL==secondL) {
+                secondL=rand()%clients.size();
+            }
+            int buff=second.at(firstL);
+            second.at(firstL)= second.at(secondL);
+            second.at(secondL) = buff;
+        }
     }
+    for (auto v: crossovers) {
+        population.push_back(v);
+
+    }
+    while (population.size()>100) {
+        int actsol=0;
+        double max=checkSolution(clients,  maxCap, depot,population.at(0));
+        int out=0;
+        for(auto v : population) {
+            double act=checkSolution(clients, maxCap, depot, v);
+            if(act>max) {
+                out=actsol;
+                max=act;
+            }
+            actsol++;
+
+        }
+        population.erase(population.begin()+out);
+    }
+
     return 0;
 }
 
@@ -151,11 +231,13 @@ int main(int argc, char *argv[])
             client_num++;
             clients.emplace_back(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
         }// end of parsing
-    double max=11111111;
+    double max=4576016.77462*1048;
+
     int z=0;
     int min=0;
     std::vector<std::vector<int>> population;
-    while(z<10) {
+    long beg =time(NULL);
+    while(z<50) {
         std::vector<int> sl;
         double l=grasp(vehicles,clients,maxCap,depot);
         for(auto vehicle: vehicles) {
@@ -167,7 +249,50 @@ int main(int argc, char *argv[])
         vehicles.clear();
         z++;
     }
-    genetic(population,clients,maxCap,depot);
+    std::cout<<"done"<<time(NULL)-beg<<std::endl;
+    int iters=0;
+    while(time(NULL)-beg<TIME) {
+       // std::cout<<iters<<std::endl;
+        for(auto v: population) {
+            double sol=checkSolution(clients,maxCap,depot,v);
+            if(sol<max) {
+                max=sol;
+                int x=depot.getX();
+                int y=depot.getY();
+                int cap=0;
+                double maxt=0;
+                double t=0;
+                int maszruty=0;
+                for(int vi: v) {
+                    Client cl=clients.at(vi-1);
+                    double dist=cl.getDistance(x,y);
+                    double d=dist+t>=cl.getReadyTime()?cl.getDistance(x,y):(static_cast<double>(cl.getReadyTime())-t);
+                    if(cap+cl.getDemand()>maxCap || dist+t>cl.getDueDate() || d+depot.getDistance(x,y)>depot.getDueDate()) {
+                        maxt+=t+depot.getDistance(x,y);
+                        maszruty++;
+                        x=depot.getX();
+                        y=depot.getY();
+                        cap=0;
+
+                        t=0;
+                        dist=cl.getDistance(x,y);
+                        d=dist>=cl.getReadyTime()?cl.getDistance(x,y):(static_cast<double>(cl.getReadyTime()));
+                    }
+                    cap+=cl.getDemand();
+                    x=cl.getX();
+                    y=cl.getY();
+                    t+=d+cl.getServiceTime();
+                }
+                maxt+=t+depot.getDistance(x,y);
+                maszruty++;
+                std::cout<<std::fixed<<std::setprecision(5)<<maxt<<" "<<maszruty<<" "<<iters<<std::endl;
+            }
+        }
+        genetic(population,clients,maxCap,depot);
+        iters++;
+
+    }
+
     file.close();
     Ofile.close();
 
