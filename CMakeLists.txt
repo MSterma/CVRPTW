@@ -7,4 +7,6 @@ add_executable(CVRPTW main.cpp
         Client.cpp
         Client.h
         Vehicle.cpp
-        Vehicle.h)
+        Vehicle.h
+        solution.cpp
+        solution.h)

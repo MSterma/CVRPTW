@@ -67,6 +67,12 @@ build CMakeFiles/CVRPTW.dir/Vehicle.cpp.o: CXX_COMPILER__CVRPTW_unscanned_Debug 
   OBJECT_DIR = CMakeFiles/CVRPTW.dir
   OBJECT_FILE_DIR = CMakeFiles/CVRPTW.dir
 
+build CMakeFiles/CVRPTW.dir/solution.cpp.o: CXX_COMPILER__CVRPTW_unscanned_Debug /Users/mateuszsterma/CLionProjects/CVRPTW/solution.cpp || cmake_object_order_depends_target_CVRPTW
+  DEP_FILE = CMakeFiles/CVRPTW.dir/solution.cpp.o.d
+  FLAGS = -g -std=gnu++20 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -mmacosx-version-min=14.3 -fcolor-diagnostics
+  OBJECT_DIR = CMakeFiles/CVRPTW.dir
+  OBJECT_FILE_DIR = CMakeFiles/CVRPTW.dir
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target CVRPTW
@@ -75,7 +81,7 @@ build CMakeFiles/CVRPTW.dir/Vehicle.cpp.o: CXX_COMPILER__CVRPTW_unscanned_Debug 
 #############################################
 # Link the executable CVRPTW
 
-build CVRPTW: CXX_EXECUTABLE_LINKER__CVRPTW_Debug CMakeFiles/CVRPTW.dir/main.cpp.o CMakeFiles/CVRPTW.dir/Client.cpp.o CMakeFiles/CVRPTW.dir/Vehicle.cpp.o
+build CVRPTW: CXX_EXECUTABLE_LINKER__CVRPTW_Debug CMakeFiles/CVRPTW.dir/main.cpp.o CMakeFiles/CVRPTW.dir/Client.cpp.o CMakeFiles/CVRPTW.dir/Vehicle.cpp.o CMakeFiles/CVRPTW.dir/solution.cpp.o
   FLAGS = -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -mmacosx-version-min=14.3
   OBJECT_DIR = CMakeFiles/CVRPTW.dir
   POST_BUILD = :
