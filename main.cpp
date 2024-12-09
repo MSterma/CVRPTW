@@ -6,16 +6,15 @@
 #include <algorithm>
 #include <map>
 #include <random>
-#include <__charconv/chars_format.h>
-#include <__random/random_device.h>
+#include <iomanip>
 
 #include "Client.h"
 #include "Solution.h"
 #include "Vehicle.h"
 #define  RCLSIZE 3
-#define TIME 60
+#define TIME 300
 #define PSIZE 30
-#define WINRATE 80
+#define MUTRATE 50
 double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,Client depot) {
     double solLen=0;
     srand(time(NULL));
@@ -107,47 +106,50 @@ std::pair<int,double> checkSolution(std::vector<Client> clients, int maxCap, Cli
     double maxt=0;
     int masz=0;
     int i=0;
-    while (i<v.size()) {
-        Client clientI=clients.at(v.at(i)-1);
-        if(x==depot.getX() && y==depot.getY() && clientI.getX()!= depot.getX() && clientI.getY()!= depot.getY()) {
-            double distance=clientI.getDistance(x,y);
-            double finalDistance=distance>=clientI.getReadyTime()? distance+clientI.getServiceTime():clientI.getReadyTime()+clientI.getServiceTime();
-            bool canReturn=finalDistance+depot.getDistance(clientI.getX(),clientI.getY())<=depot.getDueDate();
-            if(!canReturn || clientI.getDemand() >maxCap) {
-                return {-1,-1};
-            }
-                x=clientI.getX();
-                y=clientI.getY();
-                t+=finalDistance;
-                cap+=clientI.getDemand();
-                i++;
-            //std::cout<<clientI.getId()<<" ";
-        }else {
-            double distance=clientI.getDistance(x,y);
-            double finalDistance=distance+t>=clientI.getReadyTime()? distance+clientI.getServiceTime():clientI.getReadyTime()+clientI.getServiceTime()-t;
-            bool canReturn=t+finalDistance+depot.getDistance(clientI.getX(),clientI.getY())<=depot.getDueDate();
-            if(canReturn && cap+clientI.getDemand()<=maxCap && t+finalDistance-clientI.getServiceTime()<=clientI.getDueDate()) {
-                x=clientI.getX();
-                y=clientI.getY();
-                t+=finalDistance;
-                cap+=clientI.getDemand();
-                i++;
-                //std::cout<<clientI.getId()<<" ";
-            }else {
-                t+=depot.getDistance(x,y);
-                x=depot.getX();
-                y=depot.getY();
-                maxt+=t;
-                t=0;
-                cap=0;
-                masz+=1;
-            }
+    while (i < v.size()) {
+        Client clientI = clients.at(v.at(i) - 1);
 
+        // Sprawdzenie, czy można dodać klienta (pojemność ciężarówki)
+        if (cap + clientI.getDemand() > maxCap) {
+            // Powrót do depotu i zakończenie obecnej trasy
+            t += depot.getDistance(x, y);
+            x = depot.getX();
+            y = depot.getY();
+            maxt += t;    // Dodanie czasu obecnej trasy do sumy
+            t = 0;        // Reset czasu dla nowej trasy
+            cap = 0;      // Reset pojemności ciężarówki
+            masz += 1;    // Licznik użytych ciężarówek
+            continue;     // Kontynuacja przetwarzania klientów
         }
 
+        // Obliczenie dystansu do klienta i czasu obsługi
+        double distance = clientI.getDistance(x, y);
+        double finalDistance = std::max(distance, clientI.getReadyTime() - t) + clientI.getServiceTime();
+
+        // Sprawdzenie, czy można wrócić do depotu w czasie
+        bool canReturn = t + finalDistance + depot.getDistance(clientI.getX(), clientI.getY()) <= depot.getDueDate();
+
+        if (canReturn && t + finalDistance - clientI.getServiceTime() <= clientI.getDueDate()) {
+            // Możemy dodać klienta do trasy
+            x = clientI.getX();
+            y = clientI.getY();
+            t += finalDistance;
+            cap += clientI.getDemand();
+            i++;
+        } else {
+            // Powrót do depotu, bo klient nie może zostać dodany
+            t += depot.getDistance(x, y);
+            x = depot.getX();
+            y = depot.getY();
+            maxt += t;    // Dodanie czasu obecnej trasy do sumy
+            t = 0;        // Reset czasu dla nowej trasy
+            cap = 0;      // Reset pojemności ciężarówki
+            masz += 1;    // Licznik użytych ciężarówek
+        }
     }
-    maxt+=t;
-    maxt+=depot.getDistance(x,y);
+
+// Dodanie dystansu powrotu po zakończeniu przetwarzania wszystkich klientów
+    maxt += t + depot.getDistance(x, y);
     t=0;
     cap=0;
     masz+=1;
@@ -446,7 +448,7 @@ std::pair<int,double> Routes_clustered_aproach_DNA(std::vector<std::vector<std::
 int main(int argc, char *argv[])
 {
     if(argc!=3) {
-        argv[1]=(char*)"input/m2kvrptw-0.txt";
+        argv[1]=(char*)"input/solomon_50/C208.txt";
         argv[2]=(char*)"solution.txt";
     }
     std::string testFile=argv[1];
@@ -496,9 +498,14 @@ int main(int argc, char *argv[])
 
     }*/
   srand(time(NULL));
+  bool flag= false;
    while(z<PSIZE) {
        std::vector<int> sl;;
         double l=grasp(vehicles,clients,maxCap,depot);
+        if(l==-1){
+            flag= true;
+            break;
+        }
         for (auto veh: vehicles) {
             for (auto r: veh.getRoute()) {
                 sl.push_back(r);
@@ -510,6 +517,13 @@ int main(int argc, char *argv[])
         vehicles.clear();
         z++;
     }
+   if(flag){
+       std::string output ="-1 -1\n";
+       Ofile<<output;
+       file.close();
+       Ofile.close();
+       return 0;
+   }
     /*for(int i=0; i<PSIZE; i++) {
         for(int j=0; j<clients.size(); j++) {
             std::cout << " " << population.at(i).at(j);
@@ -536,12 +550,7 @@ int main(int argc, char *argv[])
 
 
     }
-    std::cout<<"done"<<time(NULL)-beg<<std::endl;
-    std::cout<<std::fixed<<std::setprecision(5)<<actbest.getRouteNumber()<<" "<<actbest.getValue()<<" "<<iters<<std::endl;
     std::pair<int,double> bst=checkSolution(clients,maxCap,depot,population.at(bid).getRoute());
-    if(bst.second==actbest.getValue()) {
-        std::cout << "good" << std::endl;
-    }
     std::string output =std::to_string(bst.first) +" "+std::to_string(bst.second)+"\n";
     output+=getSolution(clients,maxCap,depot,population.at(bid).getRoute());
     Ofile<<output;
