@@ -12,8 +12,8 @@
 #include "Solution.h"
 #include "Vehicle.h"
 #define  RCLSIZE 3
-#define TIME 1
-#define PSIZE 5
+#define TIME 20
+#define PSIZE 15
 #define MUTRATE 50
 #define AlPHA 0.001
 #define BETA 100
@@ -86,47 +86,39 @@ std::pair<int,double> checkSolution(std::vector<Client> clients, int maxCap, Cli
     int i=0;
     while (i < v.size()) {
         Client clientI = clients.at(v.at(i) - 1);
-
-        // Sprawdzenie, czy można dodać klienta (pojemność ciężarówki)
         if (cap + clientI.getDemand() > maxCap) {
-            // Powrót do depotu i zakończenie obecnej trasy
             t += depot.getDistance(x, y);
             x = depot.getX();
             y = depot.getY();
-            maxt += t;    // Dodanie czasu obecnej trasy do sumy
-            t = 0;        // Reset czasu dla nowej trasy
-            cap = 0;      // Reset pojemności ciężarówki
-            masz += 1;    // Licznik użytych ciężarówek
-            continue;     // Kontynuacja przetwarzania klientów
+            maxt += t;
+            t = 0;
+            cap = 0;
+            masz += 1;
+            continue;
         }
 
-        // Obliczenie dystansu do klienta i czasu obsługi
         double distance = clientI.getDistance(x, y);
         double finalDistance = std::max(distance, clientI.getReadyTime() - t) + clientI.getServiceTime();
 
-        // Sprawdzenie, czy można wrócić do depotu w czasie
         bool canReturn = t + finalDistance + depot.getDistance(clientI.getX(), clientI.getY()) <= depot.getDueDate();
 
         if (canReturn && t + finalDistance - clientI.getServiceTime() <= clientI.getDueDate()) {
-            // Możemy dodać klienta do trasy
             x = clientI.getX();
             y = clientI.getY();
             t += finalDistance;
             cap += clientI.getDemand();
             i++;
         } else {
-            // Powrót do depotu, bo klient nie może zostać dodany
             t += depot.getDistance(x, y);
             x = depot.getX();
             y = depot.getY();
-            maxt += t;    // Dodanie czasu obecnej trasy do sumy
-            t = 0;        // Reset czasu dla nowej trasy
-            cap = 0;      // Reset pojemności ciężarówki
-            masz += 1;    // Licznik użytych ciężarówek
+            maxt += t;
+            t = 0;
+            cap = 0;
+            masz += 1;
         }
     }
 
-// Dodanie dystansu powrotu po zakończeniu przetwarzania wszystkich klientów
     maxt += t + depot.getDistance(x, y);
     t=0;
     cap=0;
@@ -158,7 +150,6 @@ std::string getSolution(std::vector<Client> clients, int maxCap, Client depot, s
             cap+=clientI.getDemand();
             i++;
             sol+=std::to_string(clientI.getId())+" ";
-            //std::cout<<clientI.getId()<<" ";
         }else {
             double distance=clientI.getDistance(x,y);
             double finalDistance=distance+t>=clientI.getReadyTime()? distance+clientI.getServiceTime():clientI.getReadyTime()+clientI.getServiceTime()-t;
@@ -171,7 +162,6 @@ std::string getSolution(std::vector<Client> clients, int maxCap, Client depot, s
                 i++;
                 sol+=std::to_string(clientI.getId())+" ";
 
-                //std::cout<<clientI.getId()<<" ";
             }else {
                 sol+="\n";;
                 t+=depot.getDistance(x,y);
@@ -286,15 +276,12 @@ void genetic(std::vector<Solution> &population,std::vector<Client> clients, int 
 int main(int argc, char *argv[])
 {
     if(argc!=3) {
-        argv[1]=(char*)"input/solomon_50/C208.txt";
+        argv[1]=(char*)"input/RC201.txt";
         argv[2]=(char*)"solution.txt";
     }
     std::string path = "input/solomon_50";
-
-    for (const auto & entry : std::filesystem::directory_iterator(path)) {
-        std::cout << entry.path().string()<<std::endl;
         std::string testFile=argv[1];
-        std::ifstream file ( entry.path().string());
+        std::ifstream file ( testFile);
         std::vector<Vehicle> vehicles;
         std::vector<Client> clients;
         int vehicles_num;
@@ -316,29 +303,15 @@ int main(int argc, char *argv[])
         int vals[7];
         file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6];
         Client depot= Client(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
-        std::ofstream Ofile (entry.path().string()+"sol.txt");
+        std::ofstream Ofile (argv[2]);
         while (file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6]) {
             client_num++;
             clients.emplace_back(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
         }// end of parsing
-        double max=5576016.77462;
 
         int z=0;
-        int min=0;
         std::vector<Solution>population;
         long beg =time(NULL);
-        /*while(population.size()<PSIZE) {
-               std::vector<int> sol;
-               for(int i=1; i<=clients.size(); i++) {
-                   sol.push_back(i );
-               }
-               std::random_device rd;
-               std::mt19937 g(rd());
-               std::shuffle(sol.begin(),sol.end(),g);
-
-               population.push_back(sol);
-
-           }*/
         srand(time(NULL));
         bool flag= false;
         while(z<PSIZE) {
@@ -366,13 +339,6 @@ int main(int argc, char *argv[])
             Ofile.close();
             return 0;
         }
-        /*for(int i=0; i<PSIZE; i++) {
-            for(int j=0; j<clients.size(); j++) {
-                std::cout << " " << population.at(i).at(j);
-            }
-            std::cout << std::endl;
-
-        }*/
         int iters=0;
         int bid=0;
 
@@ -397,6 +363,5 @@ int main(int argc, char *argv[])
         Ofile<<output;
         file.close();
         Ofile.close();
-    }
     return 0;
 }
