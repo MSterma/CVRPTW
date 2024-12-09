@@ -12,9 +12,11 @@
 #include "Solution.h"
 #include "Vehicle.h"
 #define  RCLSIZE 3
-#define TIME 300
-#define PSIZE 30
+#define TIME 1
+#define PSIZE 5
 #define MUTRATE 50
+#define AlPHA 0.001
+#define BETA 100
 double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,Client depot) {
     double solLen=0;
     srand(time(NULL));
@@ -73,30 +75,6 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
         solLen+=vehicle.getTime();
     }
     return solLen;
-}
-double getVal(std::vector<Client> clients, int maxCap, Client depot, std::vector<std::vector<int>> sol) {
-    double maxt=0;
-    for (int route = 0; route < sol.size(); route++) {
-        double t=0;
-        int cap=0;
-        int x=depot.getX();
-        int y=depot.getY();
-        for (int vertex = 0; vertex < sol.at(route).size(); vertex++) {
-            Client clientI=clients.at(sol.at(route).at(vertex)-1);
-            double distance=clientI.getDistance(x,y);
-            double finalDistance=distance+t>=clientI.getReadyTime()? distance+clientI.getServiceTime():clientI.getReadyTime()+clientI.getServiceTime()-t;
-            bool canReturn=t+finalDistance+depot.getDistance(clientI.getX(),clientI.getY())<=depot.getDueDate();
-            cap+=clientI.getDemand();
-            if(cap>maxCap || !canReturn || t+finalDistance-clientI.getServiceTime()>clientI.getDueDate()) {
-                return -1;
-            }
-            x=clientI.getX();
-            y=clientI.getY();
-            t+=finalDistance;
-        }
-        maxt+=t+depot.getDistance(x,y);
-    }
-    return maxt;
 }
 std::pair<int,double> checkSolution(std::vector<Client> clients, int maxCap, Client depot, std::vector<int> v) {
     int x=depot.getX();
@@ -269,24 +247,7 @@ void genetic(std::vector<Solution> &population,std::vector<Client> clients, int 
                 w++;
             }
 
-        }
-
-    /*  if(rand()%100<5) {
-          for (int sw = 1; sw < child.size(); sw++) {
-              std::pair<int,double>  prev=checkSolution(clients,maxCap,depot,child);
-              int buff=child.at(sw-1);
-              child.at(sw-1)= child.at(sw);
-              child.at(sw) = buff;
-              std::pair<int,double>  nsol=checkSolution(clients,maxCap,depot,child);
-              if(prev.first<nsol.first || (prev.first==nsol.first && prev.second<nsol.second)) {
-                  buff=child.at(sw-1);
-                  child.at(sw-1)= child.at(sw);
-                  child.at(sw) = buff;
-              }
-              // std::cout << sw<< std::endl;
-          }
-
-      }else */ if(rand()%100<=50) {
+        }if(rand()%100<=MUTRATE) {
           auto nfirst=child;
             int  firstL=rand()%clients.size();
             int  secondL=rand()%clients.size();
@@ -311,7 +272,7 @@ void genetic(std::vector<Solution> &population,std::vector<Client> clients, int 
         int out=0;
         auto max=population.at(0);
         for(auto v : population) {
-            if(v.getValue()*0.001+v.getRouteNumber()*100>max.getValue()*0.001+max.getRouteNumber()*100) {
+            if(v.getValue()*AlPHA+v.getRouteNumber()*BETA>max.getValue()*AlPHA+max.getRouteNumber()*BETA) {
                 out=actsol;
                 max=v;
             }
@@ -319,129 +280,6 @@ void genetic(std::vector<Solution> &population,std::vector<Client> clients, int 
         }
         population.erase(population.begin()+out);
     }
-}
-void remove(std::vector<std::vector<int>> &parent, int r1) {
-    for (int k = 0; k < parent.size(); k++) {
-        for (int j = 0; j < parent.at(k).size();j++) {
-                if(parent.at(k).at(j) == r1) {
-                    parent.at(k).erase(parent.at(k).begin()+j);
-                    return;
-                }
-        }
-    }
-}
-std::pair<int,double> Routes_clustered_aproach_DNA(std::vector<std::vector<std::vector<int>>> &population,  std::vector<Client> clients, int maxCap,Client depot) {
-    //tournament
-    std::vector<int> winners;
-    std::vector<std::vector<std::vector<int>>> crossovers;
-    srand(time(0));
-    for(int i=0; i<PSIZE; i+=10) {
-        int winner=i;
-        for (int j = i+1; j < i+10; j++){
-            if(population.at(winner).size()* getVal(clients,maxCap,depot,population.at(winner))>population.at(j).size()*getVal(clients,maxCap,depot,population.at(j)))  {
-                winner=j;
-            }
-        }
-        winners.push_back(winner);
-    }
-    for (int i = 0; i < winners.size()-1; i++) {
-        std::vector<std::vector<int>> parent1=population.at(winners.at(i));
-        std::vector<std::vector<int>> parent2=population.at(winners.at(i+1));
-        int  parent1RandomRouteIndex=rand()%parent1.size();
-        int  parent2RandomRouteIndex=rand()%parent2.size();
-        //  parent1.erase(parent1.begin()+parent1RandomRouteIndex);
-        //parent2.erase(parent2.begin()+parent2RandomRouteIndex);
-        std::vector<int> r1= population.at(winners.at(i)).at(parent1RandomRouteIndex);
-        std::vector<int> r2= population.at(winners.at(i+1)).at(parent1RandomRouteIndex);
-        for (auto r: r2) {
-            remove(parent1,r);
-        }
-        for (auto r: r1) {
-            remove(parent2,r);
-        }
-
-        for (int k = 0; k < r2.size(); k++) {
-            bool found=false;
-            for (int j = 0; j < parent1.size(); j++) {
-
-                for (int z = 0; z < parent1.at(j).size(); z++) {
-                    parent1.at(j).insert(parent1.at(j).begin()+z,r2.at(k));
-                    double v=getVal(clients,maxCap,depot,parent1);
-                    if(v==-1) {
-                        parent1.at(j).erase(parent1.at(j).begin()+z);}
-                    else {
-                        found=true;
-                        break;
-                    }
-                }
-                if(found) {
-                    break;
-                }
-            }
-            if(found) {
-                continue;
-            }
-            std::vector<int> nr;
-            nr.push_back(r2.at(k));
-            parent1.push_back(nr);
-        }
-        for (int k = 0; k < r1.size(); k++) {
-            bool found=false;
-            for (int j = 0; j < parent2.size(); j++) {
-                for (int z = 0; z < parent2.at(j).size(); z++) {
-                    parent2.at(j).insert(parent2.at(j).begin()+z,r1.at(k));
-                    double v=getVal(clients,maxCap,depot,parent2);
-                    if(v==-1) {
-                        parent2.at(j).erase(parent2.at(j).begin()+z);
-                        continue;
-                    }
-
-                    found=true;
-                    break;
-
-                }
-                if(found) {
-                    break;
-                }
-
-            }
-            if(found) {
-                continue;
-            }
-            std::vector<int> nr;
-            nr.push_back(r1.at(k));
-            parent2.push_back(nr);
-
-        }
-
-        crossovers.push_back(parent1);
-        crossovers.push_back(parent2);
-    }
-    double min=20000000;
-
-    for(auto v : crossovers) {
-        population.push_back(v);
-    }
-    while (population.size()>PSIZE) {
-        //std::cout << population.size()<<std::endl;
-        int actsol=0;
-        double max=getVal(clients,maxCap,depot,population.at(0));
-        int out=0;
-        for(auto v : population) {
-            double act=getVal(clients, maxCap, depot, v);
-            if(v.size()*act>max*population.at(out).size()) {
-                out=actsol;
-                max=act;
-
-            }else if(act<min) {
-                min=act;
-            }
-            actsol++;
-        }
-        population.erase(population.begin()+out);
-    }
-    return {0,min};
-
 }
 
 
@@ -451,8 +289,12 @@ int main(int argc, char *argv[])
         argv[1]=(char*)"input/solomon_50/C208.txt";
         argv[2]=(char*)"solution.txt";
     }
-    std::string testFile=argv[1];
-    std::ifstream file (testFile);
+    std::string path = "input/solomon_50";
+
+    for (const auto & entry : std::filesystem::directory_iterator(path)) {
+        std::cout << entry.path().string()<<std::endl;
+        std::string testFile=argv[1];
+        std::ifstream file ( entry.path().string());
         std::vector<Vehicle> vehicles;
         std::vector<Client> clients;
         int vehicles_num;
@@ -473,89 +315,88 @@ int main(int argc, char *argv[])
         }
         int vals[7];
         file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6];
-         Client depot= Client(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
-         std::ofstream Ofile (argv[2]);
+        Client depot= Client(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
+        std::ofstream Ofile (entry.path().string()+"sol.txt");
         while (file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6]) {
             client_num++;
             clients.emplace_back(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
         }// end of parsing
-    double max=5576016.77462;
+        double max=5576016.77462;
 
-    int z=0;
-    int min=0;
-     std::vector<Solution>population;
-    long beg =time(NULL);
- /*while(population.size()<PSIZE) {
-        std::vector<int> sol;
-        for(int i=1; i<=clients.size(); i++) {
-            sol.push_back(i );
-        }
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(sol.begin(),sol.end(),g);
+        int z=0;
+        int min=0;
+        std::vector<Solution>population;
+        long beg =time(NULL);
+        /*while(population.size()<PSIZE) {
+               std::vector<int> sol;
+               for(int i=1; i<=clients.size(); i++) {
+                   sol.push_back(i );
+               }
+               std::random_device rd;
+               std::mt19937 g(rd());
+               std::shuffle(sol.begin(),sol.end(),g);
 
-        population.push_back(sol);
+               population.push_back(sol);
 
-    }*/
-  srand(time(NULL));
-  bool flag= false;
-   while(z<PSIZE) {
-       std::vector<int> sl;;
-        double l=grasp(vehicles,clients,maxCap,depot);
-        if(l==-1){
-            flag= true;
-            break;
-        }
-        for (auto veh: vehicles) {
-            for (auto r: veh.getRoute()) {
-                sl.push_back(r);
-
+           }*/
+        srand(time(NULL));
+        bool flag= false;
+        while(z<PSIZE) {
+            std::vector<int> sl;;
+            double l=grasp(vehicles,clients,maxCap,depot);
+            if(l==-1){
+                flag= true;
+                break;
             }
-        }
-        population.emplace_back(l,vehicles.size(),sl);
+            for (auto veh: vehicles) {
+                for (auto r: veh.getRoute()) {
+                    sl.push_back(r);
 
-        vehicles.clear();
-        z++;
-    }
-   if(flag){
-       std::string output ="-1 -1\n";
-       Ofile<<output;
-       file.close();
-       Ofile.close();
-       return 0;
-   }
-    /*for(int i=0; i<PSIZE; i++) {
-        for(int j=0; j<clients.size(); j++) {
-            std::cout << " " << population.at(i).at(j);
-        }
-        std::cout << std::endl;
-
-    }*/
-    std::cout<<"done"<<time(NULL)-beg<<std::endl;
-    int iters=0;
-    int bid=0;
-
-    auto actbest=population.at(0);
-    while(time(NULL)-beg<TIME) {
-        genetic(population,clients,maxCap,depot);
-        iters++;
-        int i=0;
-        for(auto v: population) {
-            if(100*v.getRouteNumber()+v.getValue()*0.001<actbest.getValue()*0.001+actbest.getRouteNumber()*100) {
-                actbest=v;
-                bid=i;
+                }
             }
-            i++;
+            population.emplace_back(l,vehicles.size(),sl);
+
+            vehicles.clear();
+            z++;
         }
+        if(flag){
+            std::string output ="-1 -1\n";
+            Ofile<<output;
+            file.close();
+            Ofile.close();
+            return 0;
+        }
+        /*for(int i=0; i<PSIZE; i++) {
+            for(int j=0; j<clients.size(); j++) {
+                std::cout << " " << population.at(i).at(j);
+            }
+            std::cout << std::endl;
+
+        }*/
+        int iters=0;
+        int bid=0;
+
+        auto actbest=population.at(0);
+        while(time(NULL)-beg<TIME) {
+            genetic(population,clients,maxCap,depot);
+            iters++;
+            int i=0;
+            for(auto v: population) {
+                if(BETA*v.getRouteNumber()+v.getValue()*AlPHA<actbest.getValue()*AlPHA+actbest.getRouteNumber()*BETA) {
+                    actbest=v;
+                    bid=i;
+                }
+                i++;
+            }
 
 
+        }
+        std::pair<int,double> bst=checkSolution(clients,maxCap,depot,population.at(bid).getRoute());
+        std::string output =std::to_string(bst.first) +" "+std::to_string(bst.second)+"\n";
+        output+=getSolution(clients,maxCap,depot,population.at(bid).getRoute());
+        Ofile<<output;
+        file.close();
+        Ofile.close();
     }
-    std::pair<int,double> bst=checkSolution(clients,maxCap,depot,population.at(bid).getRoute());
-    std::string output =std::to_string(bst.first) +" "+std::to_string(bst.second)+"\n";
-    output+=getSolution(clients,maxCap,depot,population.at(bid).getRoute());
-    Ofile<<output;
-    file.close();
-    Ofile.close();
-
     return 0;
 }
