@@ -7,12 +7,13 @@
 #include <map>
 #include <random>
 #include <iomanip>
+#include <filesystem>
 
 #include "Client.h"
 #include "Solution.h"
 #include "Vehicle.h"
 #define  RCLSIZE 3
-#define TIME 20
+#define TIME 180
 #define PSIZE 15
 #define MUTRATE 50
 #define AlPHA 0.001
@@ -26,11 +27,7 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
     int yd=depot.getY();
     int depoDue=depot.getDueDate();
     int k=0;
-    std::sort(unserved.begin(),unserved.end(),[](Client& lhs, Client& rhs) {
-             //double l= lhs.getDistance(x,y)+t>lhs.getReadyTime()?lhs.getDistance(x,y):lhs.getReadyTime()-static_cast<double>(t);
-           // double r=rhs.getDistance(x,y)+t>rhs.getReadyTime()?rhs.getDistance(x,y):rhs.getReadyTime()-static_cast<double>(t);
-             return lhs.getDemand()>rhs.getDemand();
-         });
+
     while(!unserved.empty()) {
         vehicles.emplace_back(Vehicle(xd,yd,maxCap));
         while(1) {
@@ -39,7 +36,11 @@ double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int max
             double t=vehicles.at(k).getTime();
             Vehicle& vehicle=vehicles.at(k);
             int cap=vehicle.getCapacity();
-
+            std::sort(unserved.begin(),unserved.end(),[x, y, t](Client& lhs, Client& rhs) {
+                double l= lhs.getDistance(x,y)+t>lhs.getReadyTime()?lhs.getDistance(x,y):lhs.getReadyTime()-static_cast<double>(t);
+                double r=rhs.getDistance(x,y)+t>rhs.getReadyTime()?rhs.getDistance(x,y):rhs.getReadyTime()-static_cast<double>(t);
+                return l<r;
+            });
 
             int i=0;
 
@@ -126,64 +127,61 @@ std::pair<int,double> checkSolution(std::vector<Client> clients, int maxCap, Cli
     return {masz,maxt};
 }
 std::string getSolution(std::vector<Client> clients, int maxCap, Client depot, std::vector<int> v) {
-    std::string sol="";
-    int x=depot.getX();
-    int y=depot.getY();
-    int cap=0;
-    double t=0;
-    double maxt=0;
-    int masz=0;
-    int i=0;
-    while (i<v.size()) {
-        Client clientI=clients.at(v.at(i)-1);
+    std::string sol = "";
+    int x = depot.getX();
+    int y = depot.getY();
+    int cap = 0;
+    double t = 0;
+    double maxt = 0;
+    int masz = 0;
+    int i = 0;
 
-        if(x==depot.getX() && y==depot.getY() && clientI.getX()!= depot.getX() && clientI.getY()!= depot.getY()) {
-            double distance=clientI.getDistance(x,y);
-            double finalDistance=distance>clientI.getReadyTime()? distance+clientI.getServiceTime():clientI.getReadyTime()+clientI.getServiceTime();
-            bool canReturn=finalDistance+depot.getDistance(clientI.getX(),clientI.getY())<=depot.getDueDate();
-            if(!canReturn || clientI.getDemand() >maxCap) {
-                return {-1,-1};
-            }
-            x=clientI.getX();
-            y=clientI.getY();
-            t+=finalDistance;
-            cap+=clientI.getDemand();
-            i++;
-            sol+=std::to_string(clientI.getId())+" ";
-        }else {
-            double distance=clientI.getDistance(x,y);
-            double finalDistance=distance+t>=clientI.getReadyTime()? distance+clientI.getServiceTime():clientI.getReadyTime()+clientI.getServiceTime()-t;
-            bool canReturn=t+finalDistance+depot.getDistance(clientI.getX(),clientI.getY())<=depot.getDueDate();
-            if(canReturn && cap+clientI.getDemand()<=maxCap && t+finalDistance-clientI.getServiceTime()<=clientI.getDueDate()) {
-                x=clientI.getX();
-                y=clientI.getY();
-                t+=finalDistance;
-                cap+=clientI.getDemand();
-                i++;
-                sol+=std::to_string(clientI.getId())+" ";
+    while (i < v.size()) {
+        Client clientI = clients.at(v.at(i) - 1);
 
-            }else {
-                sol+="\n";;
-                t+=depot.getDistance(x,y);
-                x=depot.getX();
-                y=depot.getY();
-                maxt+=t;
-                t=0;
-                cap=0;
-                masz+=1;
 
-            }
+        if (cap + clientI.getDemand() > maxCap) {
 
+            sol += "\n";
+            t += depot.getDistance(x, y);
+            x = depot.getX();
+            y = depot.getY();
+            maxt += t;
+            t = 0;
+            cap = 0;
+            masz += 1;
+            continue;
         }
 
-    }
-    maxt+=t;
 
-    t=0;
-    cap=0;
-    masz+=1;
+        double distance = clientI.getDistance(x, y);
+        double finalDistance = std::max(distance, clientI.getReadyTime() - t) + clientI.getServiceTime();
+        bool canReturn = t + finalDistance + depot.getDistance(clientI.getX(), clientI.getY()) <= depot.getDueDate();
+
+        if (canReturn && t + finalDistance - clientI.getServiceTime() <= clientI.getDueDate()) {
+
+            x = clientI.getX();
+            y = clientI.getY();
+            t += finalDistance;
+            cap += clientI.getDemand();
+            sol += std::to_string(clientI.getId()) + " ";
+            i++;
+        } else {
+            sol += "\n";
+            t += depot.getDistance(x, y);
+            x = depot.getX();
+            y = depot.getY();
+            maxt += t;
+            t = 0;
+            cap = 0;
+            masz += 1;
+        }
+    }
+
+    maxt += t + depot.getDistance(x, y);
     return sol;
 }
+
 void genetic(std::vector<Solution> &population,std::vector<Client> clients, int maxCap,Client depot) {
     std::vector<std::vector<int>> crossovers;
     std::sort(population.begin(),population.end(), [](Solution& lhs , Solution& rhs ) {
@@ -276,16 +274,19 @@ void genetic(std::vector<Solution> &population,std::vector<Client> clients, int 
 int main(int argc, char *argv[])
 {
     if(argc!=3) {
-        argv[1]=(char*)"input/RC201.txt";
+        argv[1]=(char*)"input/C101.txt";
         argv[2]=(char*)"solution.txt";
     }
-    std::string path = "input/solomon_50";
-        std::string testFile=argv[1];
-        std::ifstream file ( testFile);
+    std::string path = "input/1000";
+    for (const auto & entry : std::filesystem::directory_iterator(path)) {
+        std::cout << entry.path().string() << std::endl;
+        std::ifstream file(entry.path().string());
+        std::string testFile = argv[1];
+//        std::ifstream file(testFile);
         std::vector<Vehicle> vehicles;
         std::vector<Client> clients;
         int vehicles_num;
-
+        std::ofstream Ofile(entry.path().string() + "sol.txt");
         int maxCap;
         int client_num = 0;
         std::string fileName;
@@ -297,28 +298,28 @@ int main(int argc, char *argv[])
         }
         file >> vehicles_num;
         file >> maxCap;
-        for(int i = 0; i < 4; i++) {
-            getline(file,buf);
+        for (int i = 0; i < 4; i++) {
+            getline(file, buf);
         }
         int vals[7];
-        file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6];
-        Client depot= Client(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
-        std::ofstream Ofile (argv[2]);
-        while (file>>vals[0]>>vals[1]>>vals[2]>>vals[3]>>vals[4]>>vals[5]>>vals[6]) {
+        file >> vals[0] >> vals[1] >> vals[2] >> vals[3] >> vals[4] >> vals[5] >> vals[6];
+        Client depot = Client(vals[0], vals[1], vals[2], vals[3], vals[4], vals[5], vals[6]);
+//        std::ofstream Ofile(argv[2]);
+        while (file >> vals[0] >> vals[1] >> vals[2] >> vals[3] >> vals[4] >> vals[5] >> vals[6]) {
             client_num++;
-            clients.emplace_back(vals[0],vals[1],vals[2],vals[3],vals[4],vals[5],vals[6]);
+            clients.emplace_back(vals[0], vals[1], vals[2], vals[3], vals[4], vals[5], vals[6]);
         }// end of parsing
 
-        int z=0;
-        std::vector<Solution>population;
-        long beg =time(NULL);
-        srand(time(NULL));
-        bool flag= false;
-        while(z<PSIZE) {
+        int z = 0;
+        std::vector<Solution> population;
+        long beg = time(NULL);
+        bool flag = false;
+        while (z < PSIZE) {
             std::vector<int> sl;;
-            double l=grasp(vehicles,clients,maxCap,depot);
-            if(l==-1){
-                flag= true;
+            double l = grasp(vehicles, clients, maxCap, depot);
+//            std::cout<<std::fixed<<std::setprecision(5)<<l<<" "<<vehicles.size()<<std::endl;
+            if (l == -1) {
+                flag = true;
                 break;
             }
             for (auto veh: vehicles) {
@@ -327,41 +328,44 @@ int main(int argc, char *argv[])
 
                 }
             }
-            population.emplace_back(l,vehicles.size(),sl);
+            population.emplace_back(l, vehicles.size(), sl);
 
             vehicles.clear();
             z++;
         }
-        if(flag){
-            std::string output ="-1 -1\n";
-            Ofile<<output;
+        if (flag) {
+            std::string output = "-1 -1\n";
+            Ofile << output;
             file.close();
             Ofile.close();
             return 0;
         }
-        int iters=0;
-        int bid=0;
+        std::cout<<"done "<< time(NULL)-beg<<std::endl;
+        int iters = 0;
+        int bid = 0;
 
-        auto actbest=population.at(0);
-        while(time(NULL)-beg<TIME) {
-            genetic(population,clients,maxCap,depot);
+        auto actbest = population.at(0);
+        while (time(NULL) - beg < TIME) {
+            genetic(population, clients, maxCap, depot);
             iters++;
-            int i=0;
-            for(auto v: population) {
-                if(BETA*v.getRouteNumber()+v.getValue()*AlPHA<actbest.getValue()*AlPHA+actbest.getRouteNumber()*BETA) {
-                    actbest=v;
-                    bid=i;
+            int i = 0;
+            for (auto v: population) {
+                if (BETA * v.getRouteNumber() + v.getValue() * AlPHA <
+                    actbest.getValue() * AlPHA + actbest.getRouteNumber() * BETA) {
+                    actbest = v;
+                    bid = i;
                 }
                 i++;
             }
 
 
         }
-        std::pair<int,double> bst=checkSolution(clients,maxCap,depot,population.at(bid).getRoute());
-        std::string output =std::to_string(bst.first) +" "+std::to_string(bst.second)+"\n";
-        output+=getSolution(clients,maxCap,depot,population.at(bid).getRoute());
-        Ofile<<output;
+        std::pair<int, double> bst = checkSolution(clients, maxCap, depot, population.at(bid).getRoute());
+        std::string output = std::to_string(bst.first) + " " + std::to_string(bst.second) + "\n";
+        output += getSolution(clients, maxCap, depot, population.at(bid).getRoute());
+        Ofile << output;
         file.close();
         Ofile.close();
+    }
     return 0;
 }
