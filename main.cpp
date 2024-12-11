@@ -12,10 +12,10 @@
 #include "Client.h"
 #include "Solution.h"
 #include "Vehicle.h"
-#define  RCLSIZE 3
-#define TIME 180
-#define PSIZE 15
-#define MUTRATE 50
+#define  RCLSIZE 1
+#define TIME 300
+#define PSIZE 9
+#define MUTRATE 55
 #define AlPHA 0.001
 #define BETA 100
 double grasp(std::vector<Vehicle> &vehicles,std::vector<Client> clients, int maxCap,Client depot) {
@@ -236,16 +236,33 @@ void genetic(std::vector<Solution> &population,std::vector<Client> clients, int 
             }
 
         }if(rand()%100<=MUTRATE) {
-          auto nfirst=child;
+            auto prev=checkSolution(clients,maxCap,depot,child);
             int  firstL=rand()%clients.size();
-            int  secondL=rand()%clients.size();
-            while (firstL==secondL) {
-                secondL=rand()%clients.size();
+            int  secondL=0;
+            while(1) {
+                auto nfirst=child;
+                if (firstL==secondL) {
+                    secondL++;
+                    if(secondL==nfirst.size()) {
+                        crossovers.push_back(nfirst);
+                        break;
+                    }
+                    continue;
+                }
+                int buff=nfirst.at(firstL);
+                nfirst.at(firstL)= nfirst.at(secondL);
+                nfirst.at(secondL) = buff;
+                auto cur =checkSolution(clients,maxCap,depot,nfirst);;
+                if(cur.second<=prev.second&&cur.first<=prev.first) {
+                    crossovers.push_back(nfirst);
+                    break;
+                }
+                secondL++;
+                if(secondL==nfirst.size()) {
+                    crossovers.push_back(nfirst);
+                    break;
+                }
             }
-            int buff=nfirst.at(firstL);
-            nfirst.at(firstL)= nfirst.at(secondL);
-            nfirst.at(secondL) = buff;
-            crossovers.push_back(nfirst);
       }
         crossovers.push_back(child);
     }
@@ -274,19 +291,17 @@ void genetic(std::vector<Solution> &population,std::vector<Client> clients, int 
 int main(int argc, char *argv[])
 {
     if(argc!=3) {
-        argv[1]=(char*)"input/C101.txt";
+        argv[1]=(char*)"input/rc21010.txt";
         argv[2]=(char*)"solution.txt";
     }
-    std::string path = "input/1000";
-    for (const auto & entry : std::filesystem::directory_iterator(path)) {
-        std::cout << entry.path().string() << std::endl;
-        std::ifstream file(entry.path().string());
+
+
         std::string testFile = argv[1];
-//        std::ifstream file(testFile);
+        std::ifstream file(testFile);
         std::vector<Vehicle> vehicles;
         std::vector<Client> clients;
         int vehicles_num;
-        std::ofstream Ofile(entry.path().string() + "sol.txt");
+        std::ofstream Ofile(argv[2]);
         int maxCap;
         int client_num = 0;
         std::string fileName;
@@ -340,7 +355,7 @@ int main(int argc, char *argv[])
             Ofile.close();
             return 0;
         }
-        std::cout<<"done "<< time(NULL)-beg<<std::endl;
+//        std::cout<<"done "<< time(NULL)-beg<<std::endl;
         int iters = 0;
         int bid = 0;
 
@@ -366,6 +381,6 @@ int main(int argc, char *argv[])
         Ofile << output;
         file.close();
         Ofile.close();
-    }
+
     return 0;
 }
