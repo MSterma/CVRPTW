@@ -13,7 +13,7 @@
 #include "Solution.h"
 #include "Vehicle.h"
 #define  RCLSIZE 1
-#define TIME 300
+#define TIME 90
 #define PSIZE 9
 #define MUTRATE 55
 #define AlPHA 0.001
@@ -302,6 +302,9 @@ int main(int argc, char *argv[])
         std::vector<Client> clients;
         int vehicles_num;
         std::ofstream Ofile(argv[2]);
+    std::ofstream Ofile1 ("sol1.txt");
+    std::ofstream Ofile2 ("sol2.txt");
+    std::ofstream Ofile3 ("sol3.txt");
         int maxCap;
         int client_num = 0;
         std::string fileName;
@@ -323,64 +326,77 @@ int main(int argc, char *argv[])
         while (file >> vals[0] >> vals[1] >> vals[2] >> vals[3] >> vals[4] >> vals[5] >> vals[6]) {
             client_num++;
             clients.emplace_back(vals[0], vals[1], vals[2], vals[3], vals[4], vals[5], vals[6]);
+            if(vals[0]%10!=0){
+                continue;
+            }
+            for(int i=0;i<3;i++){
+                int z = 0;
+                std::vector<Solution> population;
+                long beg = time(NULL);
+                bool flag = false;
+                while (z < PSIZE) {
+                    std::vector<int> sl;;
+                    double l = grasp(vehicles, clients, maxCap, depot);
+//            std::cout<<std::fixed<<std::setprecision(5)<<l<<" "<<vehicles.size()<<std::endl;
+                    if (l == -1) {
+                        flag = true;
+                        break;
+                    }
+                    for (auto veh: vehicles) {
+                        for (auto r: veh.getRoute()) {
+                            sl.push_back(r);
+
+                        }
+                    }
+                    population.emplace_back(l, vehicles.size(), sl);
+
+                    vehicles.clear();
+                    z++;
+                }
+                if (flag) {
+                    std::string output = "-1 -1\n";
+                    Ofile << output;
+                    file.close();
+                    Ofile.close();
+                    return 0;
+                }
+//        std::cout<<"done "<< time(NULL)-beg<<std::endl;
+                int iters = 0;
+                int bid = 0;
+
+                auto actbest = population.at(0);
+                while (time(NULL) - beg < TIME) {
+                    genetic(population, clients, maxCap, depot);
+                    iters++;
+                    int wu = 0;
+                    for (auto v: population) {
+                        if (BETA * v.getRouteNumber() + v.getValue() * AlPHA <
+                            actbest.getValue() * AlPHA + actbest.getRouteNumber() * BETA) {
+                            actbest = v;
+                            bid = wu;
+                        }
+                        wu++;
+                    }
+
+
+                }
+                std::pair<int, double> bst = checkSolution(clients, maxCap, depot, population.at(bid).getRoute());
+                std::string output = std::to_string(bst.first) + " " + std::to_string(bst.second) + "\n";
+                if(i==0){
+                    Ofile1 << output;
+
+                }else  if(i==1){
+                    Ofile2 << output;
+                } else if(i==2){
+                    Ofile3 << output;
+                }
+            }
         }// end of parsing
 
-        int z = 0;
-        std::vector<Solution> population;
-        long beg = time(NULL);
-        bool flag = false;
-        while (z < PSIZE) {
-            std::vector<int> sl;;
-            double l = grasp(vehicles, clients, maxCap, depot);
-//            std::cout<<std::fixed<<std::setprecision(5)<<l<<" "<<vehicles.size()<<std::endl;
-            if (l == -1) {
-                flag = true;
-                break;
-            }
-            for (auto veh: vehicles) {
-                for (auto r: veh.getRoute()) {
-                    sl.push_back(r);
-
-                }
-            }
-            population.emplace_back(l, vehicles.size(), sl);
-
-            vehicles.clear();
-            z++;
-        }
-        if (flag) {
-            std::string output = "-1 -1\n";
-            Ofile << output;
-            file.close();
-            Ofile.close();
-            return 0;
-        }
-//        std::cout<<"done "<< time(NULL)-beg<<std::endl;
-        int iters = 0;
-        int bid = 0;
-
-        auto actbest = population.at(0);
-        while (time(NULL) - beg < TIME) {
-            genetic(population, clients, maxCap, depot);
-            iters++;
-            int i = 0;
-            for (auto v: population) {
-                if (BETA * v.getRouteNumber() + v.getValue() * AlPHA <
-                    actbest.getValue() * AlPHA + actbest.getRouteNumber() * BETA) {
-                    actbest = v;
-                    bid = i;
-                }
-                i++;
-            }
-
-
-        }
-        std::pair<int, double> bst = checkSolution(clients, maxCap, depot, population.at(bid).getRoute());
-        std::string output = std::to_string(bst.first) + " " + std::to_string(bst.second) + "\n";
-        output += getSolution(clients, maxCap, depot, population.at(bid).getRoute());
-        Ofile << output;
         file.close();
-        Ofile.close();
+        Ofile1.close();
+    Ofile2.close();
+    Ofile3.close();
 
     return 0;
 }
